@@ -6,22 +6,18 @@ from sklearn.cross_validation import train_test_split
 import numpy as np
 import theano
 import theano.tensor as T
-import generateTestDate
 
 def numLearn():
     mnist = fetch_mldata('MNIST original')
-    train_X, train_y = shuffle(mnist.data.astype('float32'),
-                               mnist.target.astype('int32'), random_state=42)
+    mnist_X, mnist_y = shuffle(mnist.data.astype('float32'),
+                           mnist.target.astype('int32'), random_state=42)
 
+    mnist_X = mnist_X / 255.0
 
-    train_X = train_X / 255.0
+    train_X, test_X, train_y, test_y = train_test_split(mnist_X, mnist_y,
+                                                    test_size=0.2,
+                                                    random_state=40)
     train_y = np.eye(10)[train_y]
-
-    test_X = np.empty((0,784)).astype('float32')
-    for i in range(15,16):
-        print("TestNum/two/test"+str(i)+".bmp")
-        test_X = np.append(test_X,[generateTestDate.image_convert("TestNum/two/test_"+str(i)+".bmp").astype('float32')],axis=0)
-        print(test_X)
 
 
     trng = RandomStreams(42)
@@ -90,13 +86,13 @@ def numLearn():
             start = i*batch_size
             end = start + batch_size
             train(train_X[start:end], train_y[start:end])
-        pred_y = test(test_X)
+    pred_y = test(test_X)
     print(pred_y)
     count = 0
     for i in range(0,pred_y.shape[0]):
-        if pred_y[i] == 2:
+        if pred_y[i] == test_y[i]:
             count += 1
-    print(count/pred_y.shape[0])
+    print("accuracy"+str(count/pred_y.shape[0]))
     return pred_y
 
 

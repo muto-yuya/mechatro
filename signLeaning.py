@@ -5,90 +5,78 @@ from collections import OrderedDict
 import numpy as np
 import theano
 import theano.tensor as T
+import generateTestDate
 
 
-train_X = np.load('train_X.npy')
-train_y = np.load('train_y.npy')
-test_X = np.load('test_X.npy')
+def signLearn():
+    train_X = np.load('train_X.npy')
+    train_y = np.load('train_y.npy')
+    test_X = np.array([generateTestDate.image_convert("sign.bmp").astype('float32')])
 
-trng = RandomStreams(42)
-rng = np.random.RandomState(1234)
+    trng = RandomStreams(42)
+    rng = np.random.RandomState(1234)
 
-# Multi Layer Perceptron
-class Layer:
-    # Constructor
-    def __init__(self, in_dim, out_dim, function):
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        self.function = function
-        self.W = theano.shared(rng.uniform(low=-0.08, high=0.08,
-                                           size=(in_dim, out_dim)
-                                           ).astype('float32'), name='W')
-        self.b = theano.shared(np.zeros(out_dim).astype('float32'), name='b')
-        self.params = [self.W, self.b]
+    # Multi Layer Perceptron
+    class Layer:
+        # Constructor
+        def __init__(self, in_dim, out_dim, function):
+            self.in_dim = in_dim
+            self.out_dim = out_dim
+            self.function = function
+            self.W = theano.shared(rng.uniform(low=-0.08, high=0.08,
+                                               size=(in_dim, out_dim)
+                                               ).astype('float32'), name='W')
+            self.b = theano.shared(np.zeros(out_dim).astype('float32'), name='b')
+            self.params = [self.W, self.b]
 
-    # Forward Propagation
-    def f_prop(self, x):
-        self.z = self.function(T.dot(x, self.W) + self.b)
-        return self.z
-
-
-# Stochastic Gradient Descent
-def sgd(params, g_params, eps=np.float32(0.1)):
-    updates = OrderedDict()
-    for param, g_param in zip(params, g_params):
-        updates[param] = param - eps*g_param
-    return updates
+        # Forward Propagation
+        def f_prop(self, x):
+            self.z = self.function(T.dot(x, self.W) + self.b)
+            return self.z
 
 
-def tanh(x):
-    return T.nnet.sigmoid(x)*2-1
-layers = [
-    Layer(784, 100, tanh),
-    Layer(100, 4, T.nnet.softmax)
-]
+    # Stochastic Gradient Descent
+    def sgd(params, g_params, eps=np.float32(0.1)):
+        updates = OrderedDict()
+        for param, g_param in zip(params, g_params):
+            updates[param] = param - eps*g_param
+        return updates
 
-x = T.fmatrix('x')
-t = T.imatrix('t')
+    def tanh(x):
+        return T.nnet.sigmoid(x)*2-1
+    layers = [
+        Layer(784, 100, T.nnet.relu),
+        Layer(100, 4, T.nnet.softmax)
+    ]
 
-params = []
-for i, layer in enumerate(layers):
-    params += layer.params
-    if i == 0:
-        layer_out = layer.f_prop(x)
-    else:
-        layer_out = layer.f_prop(layer_out)
+    x = T.fmatrix('x')
+    t = T.imatrix('t')
 
-y = layers[-1].z
-cost = T.mean(T.nnet.categorical_crossentropy(y, t))
+    params = []
+    for i, layer in enumerate(layers):
+        params += layer.params
+        if i == 0:
+            layer_out = layer.f_prop(x)
+        else:
+            layer_out = layer.f_prop(layer_out)
 
-g_params = T.grad(cost=cost, wrt=params)
-updates = sgd(params, g_params)
+    y = layers[-1].z
+    cost = T.mean(T.nnet.categorical_crossentropy(y, t))
 
-train = theano.function(inputs=[x, t], outputs=cost, updates=updates,
-                        allow_input_downcast=True, name='train')
-test = theano.function(inputs=[x], outputs=T.argmax(y, axis=1), name='test')
+    g_params = T.grad(cost=cost, wrt=params)
+    updates = sgd(params, g_params)
 
-batch_size = 50
-n_batches = train_X.shape[0]//batch_size
-for epoch in range(10):
-    train_X, train_y = shuffle(train_X, train_y)
-    for i in range(n_batches):
-        start = i*batch_size
-        end = start + batch_size
-        train(train_X[start:end], train_y[start:end])
-    pred_y = test(test_X)
+    train = theano.function(inputs=[x, t], outputs=cost, updates=updates,
+                            allow_input_downcast=True, name='train')
+    test = theano.function(inputs=[x], outputs=T.argmax(y, axis=1), name='test')
 
-print(pred_y)
-
-pred = []
-for i in range(0,pred_y.shape[0]):
-    if pred_y[i] == 0:
-        pred.append("+")
-    elif pred_y[i] == 1:
-        pred.append("-")
-    elif pred_y[i] == 2:
-        pred.append("*")
-    elif pred_y[i] == 3:
-        pred.append("/")
-print(pred)
+    batch_size = 100
+    n_batches = train_X.shape[0]//batch_size
+    for epoch in range(5):
+        train_X, train_y = shuffle(train_X, train_y)
+        for i in range(n_batches):
+            start = i*batch_size
+            end = start + batch_size
+            train(train_X[start:end], train_y[start:end])
+        pred_y = test(test_X)
+    return pred_y
