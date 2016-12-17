@@ -16,7 +16,7 @@ void setup() {
   pinMode(DIR2, OUTPUT); // DIRピンを出力に設定
   pinMode(PUL2, OUTPUT); // PULピンを出力に設定
   servo.attach(13); //サーボモーターつけたとこ
-  servo.write(0);
+  servo.write(180);
   delay(1000);
   Serial.begin(9600);
 }
@@ -40,17 +40,16 @@ void loop() {
     numbers[cnt_buf] = '\0';  //終端文字
     x = (numbers[0]-48)*100+(numbers[1]-48)*10+(numbers[2]-48);
     y = (numbers[3]-48)*100+(numbers[4]-48)*10+(numbers[5]-48);
-    
     Serial.println(x);
     Serial.println(y);
     largeMove(x,0);
     smallMove(y,0);
     delay(1000);
-    servo.write(150);
+    servo.write(0);
     delay(1000);
     smallMove(y,1);
     largeMove(x,1);
-    servo.write(0);
+    servo.write(180);
     
     finish();
   }
